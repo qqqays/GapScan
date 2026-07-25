@@ -1,0 +1,191 @@
+# orca.yaml — GapScan 项目级工作流与环境生命周期配置
+version: "1.4"
+
+# ============================================================
+# 1. 基础环境设置
+# ============================================================
+project:
+  name: "GapScan"
+  runtime: "windows"
+
+# ============================================================
+# 2. 工作树生命周期钩子
+# ============================================================
+scripts:
+  # 每次为新 Agent 任务创建隔离工作树时运行
+  setup: |
+    echo "[Orca Hook] Initializing GapScan sandbox for a new agent task..."
+    if exist "%ORCA_WORKTREE_PATH%\requirements.txt" (
+        echo "[Orca Hook] Installing Python dependencies..."
+        pip install -r "%ORCA_WORKTREE_PATH%\requirements.txt"
+    )
+    if not exist "%ORCA_WORKTREE_PATH%\.env" (
+        if exist "%ORCA_ROOT_PATH%\.env.example" (
+            echo "[Orca Hook] Copying .env configuration..."
+            copy "%ORCA_ROOT_PATH%\.env.example" "%ORCA_WORKTREE_PATH%\.env"
+        )
+    )
+
+  # 任务完成后、归档或删除工作树前运行
+  archive: |
+    echo "[Orca Hook] Cleaning up GapScan workspace metadata..."
+
+# ============================================================
+# 3. 工作流定义
+# ============================================================
+# Agent 分工说明：
+#   omp     — 主控：复杂推理、任务编排、需求分析
+#   pi      — 主力编码：功能实现、测试编写
+#   opencode — 专项编码：爬虫、数据处理等聚焦任务
+#   hermes  — 沟通输出：报告生成、通知分发
+#   kilo    — 轻量审查：代码评审、质量检查
+
+workflows:
+
+  # ----------------------------------------------------------
+  # 工作流 1：GapScan 全自动核心管道
+  # 场景：定时全量扫描，从抓取到分发一站式
+  # ----------------------------------------------------------
+  gapscan-pipeline:
+    name: "GapScan Full Pipeline"
+    description: "全自动核心管道：抓取 → 分析 → 报告 → 通知"
+
+    phases:
+      - id: scrape
+        agent: opencode
+        prompt: >
+          Run the GitHub Trending scraper to fetch top projects and their
+          high-engagement feature requests (sort by reactions + comments).
+          Save raw data to data/raw/.
+
+      - id: analyze
+        agent: omp
+        requires: [scrape]
+        prompt: >
+          Load scraped issues. For each issue, read the project's README and
+          relevant docs, then use LLM to determine whether the feature request
+          is already covered by existing capabilities. Filter for genuine gaps
+          with strong community signals. Output structured results to
+          data/analyzed/.
+
+      - id: report
+        agent: pi
+        requires: [analyze]
+        prompt: >
+          Generate a structured Gap report from analyzed data. Format as
+          Markdown: project name, demand description, community signal
+          (reactions/comments), current status, opportunity assessment, and
+          source link. Save to reports/ with timestamp.
+
+      - id: notify
+        agent: hermes
+        requires: [report]
+        prompt: >
+          Dispatch the latest Gap report via configured Webhook channels.
+          Include a summary and a link/attachment to the full report.
+
+  # ----------------------------------------------------------
+  # 工作流 2：快速单项目扫描
+  # 场景：按需对指定仓库做快速缺口分析
+  # ----------------------------------------------------------
+  gapscan-quick:
+    name: "GapScan Quick Scan"
+    description: "按需快速扫描：指定仓库 → 抓取需求 → 分析输出"
+
+    phases:
+      - id: quick-fetch
+        agent: opencode
+        prompt: >
+          Fetch recent high-engagement feature requests from the specified
+          GitHub repository. Filter by reactions and comments, keep top N.
+
+      - id: quick-analyze
+        agent: omp
+        requires: [quick-fetch]
+        prompt: >
+          Analyze fetched issues against the project README. Identify genuine
+          gaps. Output a concise Markdown report with opportunity assessment.
+
+  # ----------------------------------------------------------
+  # 工作流 3：功能开发
+  # 场景：新功能或改进，从方案到交付
+  # ----------------------------------------------------------
+  gapscan-dev:
+    name: "GapScan Development"
+    description: "功能开发流程：方案 → 实现 → 审查"
+
+    phases:
+      - id: plan
+        agent: omp
+        prompt: >
+          Analyze the feature request and existing codebase. Produce an
+          implementation plan with task breakdown, affected files, and
+          acceptance criteria.
+
+      - id: implement
+        agent: pi
+        requires: [plan]
+        prompt: >
+          Implement the feature according to the plan. Write production code,
+          tests, and update any affected documentation. Ensure all existing
+          tests still pass.
+
+      - id: review
+        agent: kilo
+        requires: [implement]
+        prompt: >
+          Review the implementation. Check correctness, code quality,
+          security, test coverage, and adherence to project conventions.
+          Report issues or approve.
+
+  # ----------------------------------------------------------
+  # 工作流 4：代码评审
+  # 场景：PR 评审或变更检查
+  # ----------------------------------------------------------
+  gapscan-review:
+    name: "GapScan Code Review"
+    description: "多维度代码评审：质量 + 安全 + 汇总"
+
+    phases:
+      - id: quality
+        agent: kilo
+        prompt: >
+          Review code quality: readability, patterns, duplication, naming,
+          error handling, and test coverage.
+
+      - id: security
+        agent: omp
+        prompt: >
+          Review security: input validation, authentication, data storage,
+          dependency risks, and external integrations.
+
+      - id: summary
+        agent: hermes
+        requires: [quality, security]
+        prompt: >
+          Aggregate review findings into a single report with severity levels
+          (critical/high/medium/low) and actionable recommendations.
+
+  # ----------------------------------------------------------
+  # 工作流 5：技术调研
+  # 场景：探索新方向、评估技术方案
+  # ----------------------------------------------------------
+  gapscan-research:
+    name: "GapScan Research"
+    description: "技术调研流程：调研 → 原型验证"
+
+    phases:
+      - id: investigate
+        agent: omp
+        prompt: >
+          Research the given topic. Explore relevant libraries, APIs, papers,
+          and prior art. Produce a findings document with tradeoff analysis
+          and concrete recommendations.
+
+      - id: prototype
+        agent: pi
+        requires: [investigate]
+        prompt: >
+          Build a minimal prototype based on research findings to validate
+          feasibility. Focus on the riskiest assumption first. Document what
+          was learned and whether the approach is viable.

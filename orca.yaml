@@ -1,20 +1,27 @@
 # orca.yaml — GapScan 项目级工作流与环境生命周期配置
 version: "1.4"
 
-# ============================================================
-# 使用方式
-# ============================================================
-# 在 Orca 中通过 $orca-cli 触发工作流：
+# 工作流通过 Orca Automations 执行：
 #
-#   启动流水线：   orca workflow run gapscan-pipeline
-#   快速扫描：     orca workflow run gapscan-quick
-#   功能开发：     orca workflow run gapscan-dev
-#   代码评审：     orca workflow run gapscan-review
-#   技术调研：     orca workflow run gapscan-research
-#   连通性测试：   orca workflow run gapscan-smoke
+#   # 创建自动化（--disabled + 定时触发器，按需手动运行）：
+#   orca automations create \
+#       --name "GapScan Smoke Test" \
+#       --trigger daily --disabled \
+#       --prompt "$(cat orca-workflows/smoke.md)" \
+#       --provider omp
 #
-# 工作流状态：    orca workflow status
-# 工作流列表：    orca workflow list
+#   # 立即执行一次：
+#   orca automations run <automation-id>
+#
+#   # 查看所有自动化及运行历史：
+#   orca automations list --json
+#   orca automations runs <automation-id>
+#
+# 注：--trigger manual 暂不支持，先用 --trigger daily --disabled 创建，
+#     再通过 orca automations run 按需触发。
+#
+# 多阶段工作流（如 gapscan-pipeline）由主控 Agent (omp) 在 prompt 中
+# 按 phases 定义依次派发子任务给 pi / opencode / hermes / kilo。
 
 project:
   name: "GapScan"

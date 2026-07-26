@@ -95,5 +95,5 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host ""
 Write-Host "Coordinator started. Use these commands to supervise it:" -ForegroundColor Green
 Write-Host "  orca orchestration task-list --brief --json"
-Write-Host "  orca orchestration check --wait --types `"worker_done,escalation,decision_gate` --timeout-ms 300000 --json"
+Write-Host '  orca orchestration check --wait --types "worker_done,escalation,decision_gate" --timeout-ms 300000 --json'
 Write-Host "  orca orchestration dispatch-show --task <task-id> --json"

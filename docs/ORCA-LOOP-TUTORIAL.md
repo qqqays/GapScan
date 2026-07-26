@@ -177,6 +177,33 @@ orca orchestration dispatch-show --task <task-id> --json
 
 只看到“脚本启动成功”或“Agent 能回复”不算 Loop 成功。那只能证明启动器或连接可用。
 
-## 8. 边界
+## 8. 官网推荐的原生 Coordinator Demo
+
+如果要让 Orca 自己负责协调，不要运行旧的 `run-prime-loop-demo.ps1`（它只是把长 prompt 交给 `run`）。使用原生启动器：
+
+```powershell
+$terminals = orca terminal list --json | ConvertFrom-Json
+$coordinator = $terminals.result.terminals |
+  Where-Object { $_.title -match 'OMP' -and $_.connected } |
+  Select-Object -First 1 -ExpandProperty handle
+
+.\scripts\start-native-prime-coordinator.ps1 `
+  -CoordinatorHandle $coordinator `
+  -Worktree active
+```
+
+这个脚本只做官方文档规定的入口操作：`task-create` 和 `dispatch --inject`。真正的阶段拆分、依赖推进、worker 等待、第一次审查打回后动态创建 repair/re-verify/re-review 任务，都要求 OMP coordinator 使用 Orca 原生命令完成。
+
+监督：
+
+```powershell
+orca orchestration task-list --ready --json
+orca orchestration check --wait --types "worker_done,escalation,decision_gate" --timeout-ms 900000 --json
+orca orchestration dispatch-show --task <task-id> --json
+```
+
+只有看到独立任务和消息证据才算成功：`review-1=REJECTED`、`repair` 完成、`verify-2=PASS`、`review-2=APPROVED`、`hermes` 更新 `progress.md`。
+
+## 9. 边界
 
 `run-gapscan-loop.ps1` 是可复用启动器和规则模板。失败计数、任务依赖、消息等待和 worker 状态由 Orca orchestration runtime/coordinator 执行；如果需要确定性 CI 门禁，应另外写可执行测试和脚本，不能只依赖 prompt。

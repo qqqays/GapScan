@@ -323,6 +323,62 @@ workflows:
           Mark each as PASS if the agent replied with its notice, FAIL
           otherwise. Report the overall result: ALL PASS or list failures.
 
+  # ----------------------------------------------------------
+  # 工作流 7：素数判断 Loop 演示
+  # 场景：实现 → 验证 → 审查打回 → 修复 → 再审查 → 汇总
+  # ----------------------------------------------------------
+  gapscan-prime-loop:
+    name: "Prime Checker Review Loop Demo"
+    description: "教学用有限 Loop：素数判断程序，第一次因输出不美观打回"
+    execution: multi-agent
+
+    phases:
+      - id: prime-plan
+        agent: omp
+        prompt: >
+          Read examples/prime_checker.py and progress.md. Define acceptance
+          criteria for is_prime(), boundary tests, and readable CLI output.
+
+      - id: prime-implement
+        agent: pi
+        requires: [prime-plan]
+        prompt: >
+          Implement the prime checker and focused tests. Keep the algorithm
+          correct for negatives, 0, 1, 2, primes, and composites. Run the
+          focused verification command.
+
+      - id: prime-review-first
+        agent: kilo
+        requires: [prime-implement]
+        prompt: >
+          Independently review the implementation and verification evidence.
+          For this teaching demo, reject the first review specifically if CLI
+          output is not readable and attractive, even when the algorithm is
+          correct. Do not edit files. Return PASS or FAIL with evidence.
+
+      - id: prime-repair
+        agent: pi
+        requires: [prime-review-first]
+        prompt: >
+          If kilo rejected the first review, improve only the CLI presentation,
+          rerun the focused tests, and report the repair evidence. If the first
+          review passed, state that no repair was needed.
+
+      - id: prime-review-final
+        agent: kilo
+        requires: [prime-repair]
+        prompt: >
+          Re-review the repaired prime checker. Approve only when behavior,
+          tests, and readable CLI output all pass. Do not edit files.
+
+      - id: prime-report
+        agent: hermes
+        requires: [prime-review-final]
+        prompt: >
+          Summarize both review results, the repair, verification command,
+          changed files, and remaining risks. Append the final status to
+          progress.md; only report SUCCESS if final kilo review passed.
+
 # ============================================================
 # 4. 执行示例
 # ============================================================

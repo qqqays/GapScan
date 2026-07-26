@@ -60,6 +60,10 @@ GapScan 的目标输出类似下面的结构：
 
 项目目前处于早期阶段，README 用于明确产品方向和预期工作流。扫描器、分析流程、报告界面和通知渠道仍在逐步建设中；具体使用命令和配置方式将在对应功能完成后补充。
 
+## Orca Loop 教学
+
+完整的多 Agent Loop 示例（包括一次审查打回、修复和再次审查）见 [`docs/ORCA-LOOP-TUTORIAL.md`](docs/ORCA-LOOP-TUTORIAL.md)。
+
 ## 路线图
 
 - [ ] 获取 GitHub Trending 项目
